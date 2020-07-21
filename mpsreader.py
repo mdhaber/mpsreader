@@ -19,6 +19,8 @@ class problem:
         self.rhsides = {}
         self.bound_dict = {}
         self.obj = None
+        self.marker = None
+        self.intcols = set()
 
         with open(filename, 'r') as f:
             mps = list(f)
@@ -84,6 +86,7 @@ class problem:
         self.ns['L'] += self.ns['G']
 
         # convert everything to arrays
+        self.intcols = [self.col_indices[col] for col in self.intcols]
         self.c =    np.array(self.lhs[self.ns['N']].todense()).flatten()
         self.A_ub = np.array(self.lhs[self.ns['L']].todense())
         self.b_ub = np.array(self.rhs[self.ns['L']].todense()).flatten()
@@ -116,12 +119,17 @@ class problem:
         # and the value is a list of row/value pairs
         if data is None:
             data = self.columns
-        col_name = l[0]
-        if col_name not in data:
-            data[col_name] = []
-        data[col_name].append((l[1], l[2]))
-        if len(l) > 3:  # two entries in the row
-            data[col_name].append((l[3], l[4]))
+        if l[1] == "'MARKER'":
+            self.marker = l[2]
+        else:
+            col_name = l[0]
+            if self.marker == "'INTORG'":
+                self.intcols.add(col_name)
+            if col_name not in data:
+                data[col_name] = []
+            data[col_name].append((l[1], l[2]))
+            if len(l) > 3:  # two entries in the row
+                data[col_name].append((l[3], l[4]))
 
     def add_bound(self, l):
         # if this is a fixed bound constraint but there are not enough values,
@@ -213,32 +221,33 @@ def uncompress_all():
 #for file in files:
 #    if not file[-4:] == ".npz": # or file.startswith("gosh") or file.startswith("green"):
 #        continue
-#    print(file)
 #    currentDT = datetime.datetime.now()
 #    print (str(currentDT))
 #    print(file)
 #    c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(file)
-#    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="revised simplex")
+#    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="interior-point", options={"sparse":True})
 #    print(res.status)
 #    if not res.status == 2:
 #        print("INCORRECT:" + file)
-problems = ['bgdbg1', 'bgprtr', 'box1', 'chemcom', 'cplex2',
-            'ex72a', 'ex73a', 'forest6', 'galenet', 'itest2',
-            'itest6', 'klein1', 'refinery', 'woodinfe']
-for prob in problems:
-    c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(prob+".npz")
-    t0 = time.perf_counter()
-    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="revised simplex")
-    t1 = time.perf_counter()
-    print(prob, res.nit, res.status)
+
+#problems = ['bgdbg1', 'bgprtr', 'box1', 'chemcom', 'cplex2',
+#            'ex72a', 'ex73a', 'forest6', 'galenet', 'itest2',
+#            'itest6', 'klein1', 'refinery', 'woodinfe']
+#for prob in problems:
+#    c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(prob+".npz")
+#    t0 = time.perf_counter()
+#    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="revised simplex")
+#    t1 = time.perf_counter()
+#    print(prob, res.nit, res.status)
+
 # method="revised simplex"
-#prob_name = "itest2"
-##filename = prob_name + ".mps"
-##p = problem(filename)
-##p.obj = np.array([0])
-##c, A_ub, b_ub, A_eq, b_eq, bounds = p.get()
-#filename = prob_name + ".npz"
-##p.save(filename)
-#c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(filename)
-#res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds)
-#print(res)
+prob_name = "neos-4960896-besbre"
+#filename = prob_name + ".mps"
+#p = problem(filename)
+#p.obj = np.array([0])
+#c, A_ub, b_ub, A_eq, b_eq, bounds = p.get()
+filename = prob_name + ".npz"
+#p.save(filename)
+c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(filename)
+res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, options={"Sparse":True})
+print(res)
