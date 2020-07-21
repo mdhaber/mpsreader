@@ -7,6 +7,7 @@ Created on Sat Jul 01 19:34:50 2017
 from scipy.sparse import lil_matrix
 import numpy as np
 from scipy.optimize import linprog
+from os import listdir, getcwd, system
 
 
 class problem:
@@ -179,16 +180,15 @@ class problem:
 
 
 def save_all():
-    with open("netlib/summary.txt") as f:
-        summary = list(f)
-    for line in summary:
-        l = line.split()
-        name = l[0]
-        if name == "*" or ("R" in str(l[-2])):
-            continue  # can't handle ranges
-        p = problem("netlib/" + name + ".sif")
-        p.obj = float(l[-1])
-        p.save("netlib/" + name)
+    files = listdir(getcwd())
+
+    for file in files:
+        if not file[-4:] == ".mps":
+            continue
+        name = file[:-4]
+        p = problem(name + ".mps")
+        p.obj = 0
+        p.save(name)
 
 
 def load(filename):
@@ -197,13 +197,48 @@ def load(filename):
             data["b_eq"], data["bounds"], data["obj"])
 
 
-prob_name = "seba"
-filename = prob_name + ".mps"
-p = problem(filename)
-p.obj = np.array([0])
-c, A_ub, b_ub, A_eq, b_eq, bounds = p.get()
-filename = prob_name + ".npz"
-p.save(filename)
-c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(filename)
-res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds)
-print(res.fun)
+def uncompress_all():
+    files = listdir(getcwd())
+
+    for file in files:
+        if not file[-4:] == ".txt":
+            continue
+        name = file[:-4]
+        cmd = r"emps.exe {0}.txt >> {0}.mps".format(name)
+        system(cmd)
+
+
+#import datetime
+#files = listdir(getcwd())
+#for file in files:
+#    if not file[-4:] == ".npz": # or file.startswith("gosh") or file.startswith("green"):
+#        continue
+#    print(file)
+#    currentDT = datetime.datetime.now()
+#    print (str(currentDT))
+#    print(file)
+#    c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(file)
+#    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="revised simplex")
+#    print(res.status)
+#    if not res.status == 2:
+#        print("INCORRECT:" + file)
+problems = ['bgdbg1', 'bgprtr', 'box1', 'chemcom', 'cplex2',
+            'ex72a', 'ex73a', 'forest6', 'galenet', 'itest2',
+            'itest6', 'klein1', 'refinery', 'woodinfe']
+for prob in problems:
+    c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(prob+".npz")
+    t0 = time.perf_counter()
+    res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds, method="revised simplex")
+    t1 = time.perf_counter()
+    print(prob, res.nit, res.status)
+# method="revised simplex"
+#prob_name = "itest2"
+##filename = prob_name + ".mps"
+##p = problem(filename)
+##p.obj = np.array([0])
+##c, A_ub, b_ub, A_eq, b_eq, bounds = p.get()
+#filename = prob_name + ".npz"
+##p.save(filename)
+#c, A_ub, b_ub, A_eq, b_eq, bounds, obj = load(filename)
+#res = linprog(c, A_ub, b_ub, A_eq, b_eq, bounds)
+#print(res)
